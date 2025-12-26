@@ -1,0 +1,33 @@
+[project]
+name = "pong"
+version = "0.1.0"
+description = "Classic Pong game with 1P and 2P modes"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pygame-ce>=2.5.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+]
+
+[project.scripts]
+pong = "pong.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=src/pong",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
