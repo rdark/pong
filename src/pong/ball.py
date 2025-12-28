@@ -77,6 +77,27 @@ class Ball:
         if not self.rect.colliderect(paddle.rect):
             return False
 
+        # Determine which side of the paddle was hit
+        # This is crucial for proper collision when paddle moves horizontally
+        ball_center_x = self.x
+        paddle_left = paddle.x
+        paddle_right = paddle.x + paddle.width
+        paddle_center_x = paddle.center_x
+
+        # Check if ball is hitting from left or right side
+        hit_from_left = ball_center_x < paddle_center_x
+
+        # Only process collision if ball is hitting the correct face of paddle
+        # (prevents ball from "sticking" to paddle when paddle moves into ball)
+        if hit_from_left and self.vx < 0:
+            # Ball moving left but hit from left side - paddle caught up to ball
+            # Don't register this as a valid hit
+            return False
+        if not hit_from_left and self.vx > 0:
+            # Ball moving right but hit from right side - paddle caught up to ball
+            # Don't register this as a valid hit
+            return False
+
         # Calculate hit position relative to paddle center (-1 to 1)
         relative_hit = (self.y - paddle.center_y) / (paddle.height / 2)
 
@@ -97,10 +118,13 @@ class Ball:
             self.vy = self.speed * math.sin(current_angle)
 
         # Move ball away from paddle to prevent multiple collisions
-        if self.vx > 0:  # Moving right
-            self.x = paddle.x + paddle.width + self.size // 2 + 1
-        else:  # Moving left
-            self.x = paddle.x - self.size // 2 - 1
+        # Position ball just outside the paddle based on which side was hit
+        if hit_from_left:
+            # Ball hit left side of paddle, place it to the left
+            self.x = paddle_left - self.size // 2 - 1
+        else:
+            # Ball hit right side of paddle, place it to the right
+            self.x = paddle_right + self.size // 2 + 1
 
         return True
 

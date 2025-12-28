@@ -20,7 +20,8 @@ def test_paddle_initialization(paddle):
     assert paddle.width == PADDLE_WIDTH
     assert paddle.height == PADDLE_HEIGHT
     assert paddle.speed == PADDLE_SPEED
-    assert paddle.velocity == 0
+    assert paddle.velocity_y == 0
+    assert paddle.velocity_x == 0
 
 
 def test_paddle_rect(paddle):
@@ -40,20 +41,21 @@ def test_paddle_center_y(paddle):
 def test_paddle_move_up(paddle):
     """Test that move_up sets velocity correctly."""
     paddle.move_up()
-    assert paddle.velocity == -PADDLE_SPEED
+    assert paddle.velocity_y == -PADDLE_SPEED
 
 
 def test_paddle_move_down(paddle):
     """Test that move_down sets velocity correctly."""
     paddle.move_down()
-    assert paddle.velocity == PADDLE_SPEED
+    assert paddle.velocity_y == PADDLE_SPEED
 
 
 def test_paddle_stop(paddle):
     """Test that stop sets velocity to zero."""
     paddle.move_up()
     paddle.stop()
-    assert paddle.velocity == 0
+    assert paddle.velocity_y == 0
+    assert paddle.velocity_x == 0
 
 
 def test_paddle_update_moves_paddle(paddle):
@@ -87,7 +89,8 @@ def test_paddle_reset(paddle):
     paddle.reset(200, 300)
     assert paddle.x == 200
     assert paddle.y == 300
-    assert paddle.velocity == 0
+    assert paddle.velocity_y == 0
+    assert paddle.velocity_x == 0
 
 
 def test_paddle_custom_speed():
@@ -96,7 +99,7 @@ def test_paddle_custom_speed():
     custom_paddle = Paddle(x=100, y=250, speed=10)
     assert custom_paddle.speed == 10
     custom_paddle.move_up()
-    assert custom_paddle.velocity == -10
+    assert custom_paddle.velocity_y == -10
 
 
 def test_paddle_draw():
@@ -135,3 +138,106 @@ def test_paddle_boundary_stays_at_bottom(paddle):
     paddle.update()
     paddle.update()
     assert paddle.y == WINDOW_HEIGHT - PADDLE_HEIGHT
+
+
+def test_paddle_move_left(paddle):
+    """Test that move_left sets velocity correctly."""
+    paddle.move_left()
+    assert paddle.velocity_x == -PADDLE_SPEED
+
+
+def test_paddle_move_right(paddle):
+    """Test that move_right sets velocity correctly."""
+    paddle.move_right()
+    assert paddle.velocity_x == PADDLE_SPEED
+
+
+def test_paddle_stop_x(paddle):
+    """Test that stop_x stops X movement only."""
+    paddle.move_left()
+    paddle.move_down()
+    paddle.stop_x()
+    assert paddle.velocity_x == 0
+    assert paddle.velocity_y == PADDLE_SPEED
+
+
+def test_paddle_stop_y(paddle):
+    """Test that stop_y stops Y movement only."""
+    paddle.move_left()
+    paddle.move_down()
+    paddle.stop_y()
+    assert paddle.velocity_y == 0
+    assert paddle.velocity_x == -PADDLE_SPEED
+
+
+def test_paddle_center_x(paddle):
+    """Test that paddle center_x is calculated correctly."""
+    assert paddle.center_x == 100 + PADDLE_WIDTH / 2
+
+
+def test_paddle_update_moves_paddle_x(paddle):
+    """Test that update moves the paddle on X axis."""
+    initial_x = paddle.x
+    paddle.move_right()
+    paddle.update()
+    assert paddle.x == initial_x + PADDLE_SPEED
+
+
+def test_paddle_update_moves_paddle_xy(paddle):
+    """Test that update moves paddle on both axes."""
+    initial_x = paddle.x
+    initial_y = paddle.y
+    paddle.move_right()
+    paddle.move_down()
+    paddle.update()
+    assert paddle.x == initial_x + PADDLE_SPEED
+    assert paddle.y == initial_y + PADDLE_SPEED
+
+
+def test_paddle_x_boundaries():
+    """Test that paddle respects X boundaries."""
+    pygame.init()
+    # Test with custom X boundaries (left half only)
+    paddle = Paddle(x=100, y=250, min_x=0, max_x=400)
+    assert paddle.min_x == 0
+    assert paddle.max_x == 400
+
+
+def test_paddle_update_respects_left_x_boundary():
+    """Test that paddle stops at left X boundary."""
+    pygame.init()
+    paddle = Paddle(x=5, y=250, min_x=0, max_x=400)
+    paddle.move_left()
+    paddle.update()
+    assert paddle.x == 0
+
+
+def test_paddle_update_respects_right_x_boundary():
+    """Test that paddle stops at right X boundary."""
+    pygame.init()
+    paddle = Paddle(x=390, y=250, min_x=0, max_x=400)
+    paddle.move_right()
+    paddle.update()
+    assert paddle.x == 400 - PADDLE_WIDTH
+
+
+def test_paddle_x_boundary_stays_at_min():
+    """Test that paddle stays at min X boundary."""
+    pygame.init()
+    paddle = Paddle(x=0, y=250, min_x=0, max_x=400)
+    paddle.move_left()
+    paddle.update()
+    paddle.update()
+    paddle.update()
+    assert paddle.x == 0
+
+
+def test_paddle_x_boundary_stays_at_max():
+    """Test that paddle stays at max X boundary."""
+    pygame.init()
+    paddle = Paddle(x=400 - PADDLE_WIDTH, y=250, min_x=0, max_x=400)
+    paddle.move_right()
+    paddle.update()
+    paddle.update()
+    paddle.update()
+    assert paddle.x == 400 - PADDLE_WIDTH

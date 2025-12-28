@@ -10,11 +10,15 @@ from pong.constants import (
     WINDOW_HEIGHT,
     PADDLE_OFFSET,
     PADDLE_HEIGHT,
+    PADDLE_WIDTH,
     FPS,
     WHITE,
     BLACK,
     GRAY,
     WINNING_SCORE,
+    DOUBLES_PADDLE_HEIGHT,
+    DOUBLES_PADDLE_OFFSET_X,
+    DOUBLES_PADDLE_SPACING_Y,
 )
 
 
@@ -23,6 +27,7 @@ class GameMode(Enum):
 
     ONE_PLAYER = "1P"
     TWO_PLAYER = "2P"
+    DOUBLES = "Doubles"
 
 
 class GameState(Enum):
@@ -60,18 +65,85 @@ class Game:
 
     def _init_game_objects(self) -> None:
         """Initialize paddles, ball, and AI."""
-        # Calculate starting Y position for paddles (centered)
-        paddle_y = (WINDOW_HEIGHT - PADDLE_HEIGHT) // 2
+        if self.mode == GameMode.DOUBLES:
+            # Doubles mode: 4 paddles (2 humans left, 2 AI right)
+            center_y = WINDOW_HEIGHT // 2
 
-        # Create paddles
-        self.paddle_left = Paddle(PADDLE_OFFSET, paddle_y)
-        self.paddle_right = Paddle(WINDOW_WIDTH - PADDLE_OFFSET - 10, paddle_y)
+            # Left team (humans) - confined to left half
+            self.paddle_left_top = Paddle(
+                DOUBLES_PADDLE_OFFSET_X,
+                center_y - DOUBLES_PADDLE_SPACING_Y,
+                min_x=0,
+                max_x=WINDOW_WIDTH // 2
+            )
+            self.paddle_left_bottom = Paddle(
+                DOUBLES_PADDLE_OFFSET_X,
+                center_y + DOUBLES_PADDLE_SPACING_Y - DOUBLES_PADDLE_HEIGHT,
+                min_x=0,
+                max_x=WINDOW_WIDTH // 2
+            )
+            self.paddle_left_top.height = DOUBLES_PADDLE_HEIGHT
+            self.paddle_left_bottom.height = DOUBLES_PADDLE_HEIGHT
+
+            # Right team (AI) - confined to right half
+            self.paddle_right_top = Paddle(
+                WINDOW_WIDTH - DOUBLES_PADDLE_OFFSET_X - PADDLE_WIDTH,
+                center_y - DOUBLES_PADDLE_SPACING_Y,
+                min_x=WINDOW_WIDTH // 2,
+                max_x=WINDOW_WIDTH
+            )
+            self.paddle_right_bottom = Paddle(
+                WINDOW_WIDTH - DOUBLES_PADDLE_OFFSET_X - PADDLE_WIDTH,
+                center_y + DOUBLES_PADDLE_SPACING_Y - DOUBLES_PADDLE_HEIGHT,
+                min_x=WINDOW_WIDTH // 2,
+                max_x=WINDOW_WIDTH
+            )
+            self.paddle_right_top.height = DOUBLES_PADDLE_HEIGHT
+            self.paddle_right_bottom.height = DOUBLES_PADDLE_HEIGHT
+
+            # For compatibility, set main paddles to top paddles
+            self.paddle_left = self.paddle_left_top
+            self.paddle_right = self.paddle_right_top
+
+            # Create 2 AI instances for right team with 2D movement and zone-based strategy
+            # Top AI defends upper zone
+            top_zone_center = center_y - DOUBLES_PADDLE_SPACING_Y // 2
+            self.ai = AIPlayer(
+                self.paddle_right_top,
+                difficulty="medium",
+                doubles_mode=True,
+                zone="top",
+                zone_center_y=top_zone_center
+            )
+            # Bottom AI defends lower zone
+            bottom_zone_center = center_y + DOUBLES_PADDLE_SPACING_Y // 2
+            self.ai_bottom = AIPlayer(
+                self.paddle_right_bottom,
+                difficulty="medium",
+                doubles_mode=True,
+                zone="bottom",
+                zone_center_y=bottom_zone_center
+            )
+        else:
+            # Standard modes: 2 paddles
+            paddle_y = (WINDOW_HEIGHT - PADDLE_HEIGHT) // 2
+
+            # Create paddles (full horizontal movement for singles/doubles is not needed)
+            self.paddle_left = Paddle(PADDLE_OFFSET, paddle_y)
+            self.paddle_right = Paddle(WINDOW_WIDTH - PADDLE_OFFSET - PADDLE_WIDTH, paddle_y)
+
+            # No doubles paddles in standard mode
+            self.paddle_left_top = None
+            self.paddle_left_bottom = None
+            self.paddle_right_top = None
+            self.paddle_right_bottom = None
+            self.ai_bottom = None
+
+            # Create AI
+            self.ai = AIPlayer(self.paddle_right, difficulty="medium")
 
         # Create ball
         self.ball = Ball(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
-
-        # Create AI
-        self.ai = AIPlayer(self.paddle_right, difficulty="medium")
 
     def set_mode(self, mode: GameMode) -> None:
         """Set the game mode.
@@ -86,13 +158,34 @@ class Game:
         self.state = GameState.PLAYING
         self.score_left = 0
         self.score_right = 0
+        self._init_game_objects()
         self._reset_positions()
 
     def _reset_positions(self) -> None:
         """Reset all game objects to starting positions."""
-        paddle_y = (WINDOW_HEIGHT - PADDLE_HEIGHT) // 2
-        self.paddle_left.reset(PADDLE_OFFSET, paddle_y)
-        self.paddle_right.reset(WINDOW_WIDTH - PADDLE_OFFSET - 10, paddle_y)
+        if self.mode == GameMode.DOUBLES:
+            center_y = WINDOW_HEIGHT // 2
+            self.paddle_left_top.reset(
+                DOUBLES_PADDLE_OFFSET_X,
+                center_y - DOUBLES_PADDLE_SPACING_Y
+            )
+            self.paddle_left_bottom.reset(
+                DOUBLES_PADDLE_OFFSET_X,
+                center_y + DOUBLES_PADDLE_SPACING_Y - DOUBLES_PADDLE_HEIGHT
+            )
+            self.paddle_right_top.reset(
+                WINDOW_WIDTH - DOUBLES_PADDLE_OFFSET_X - PADDLE_WIDTH,
+                center_y - DOUBLES_PADDLE_SPACING_Y
+            )
+            self.paddle_right_bottom.reset(
+                WINDOW_WIDTH - DOUBLES_PADDLE_OFFSET_X - PADDLE_WIDTH,
+                center_y + DOUBLES_PADDLE_SPACING_Y - DOUBLES_PADDLE_HEIGHT
+            )
+        else:
+            paddle_y = (WINDOW_HEIGHT - PADDLE_HEIGHT) // 2
+            self.paddle_left.reset(PADDLE_OFFSET, paddle_y)
+            self.paddle_right.reset(WINDOW_WIDTH - PADDLE_OFFSET - PADDLE_WIDTH, paddle_y)
+
         self.ball.reset(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
 
     def handle_input(self, keys: pygame.key.ScancodeWrapper) -> None:
@@ -104,44 +197,101 @@ class Game:
         if self.state != GameState.PLAYING:
             return
 
-        # Player 1 controls (left paddle)
-        if keys[pygame.K_w]:
-            self.paddle_left.move_up()
-        elif keys[pygame.K_s]:
-            self.paddle_left.move_down()
-        else:
-            self.paddle_left.stop()
-
-        # Player 2 controls (right paddle) - only in 2P mode
-        if self.mode == GameMode.TWO_PLAYER:
-            if keys[pygame.K_UP]:
-                self.paddle_right.move_up()
-            elif keys[pygame.K_DOWN]:
-                self.paddle_right.move_down()
+        if self.mode == GameMode.DOUBLES:
+            # Player 1 (left top): WASD
+            # Y-axis
+            if keys[pygame.K_w]:
+                self.paddle_left_top.move_up()
+            elif keys[pygame.K_s]:
+                self.paddle_left_top.move_down()
             else:
-                self.paddle_right.stop()
+                self.paddle_left_top.stop_y()
+
+            # X-axis
+            if keys[pygame.K_a]:
+                self.paddle_left_top.move_left()
+            elif keys[pygame.K_d]:
+                self.paddle_left_top.move_right()
+            else:
+                self.paddle_left_top.stop_x()
+
+            # Player 2 (left bottom): IJKL
+            # Y-axis
+            if keys[pygame.K_i]:
+                self.paddle_left_bottom.move_up()
+            elif keys[pygame.K_k]:
+                self.paddle_left_bottom.move_down()
+            else:
+                self.paddle_left_bottom.stop_y()
+
+            # X-axis
+            if keys[pygame.K_j]:
+                self.paddle_left_bottom.move_left()
+            elif keys[pygame.K_l]:
+                self.paddle_left_bottom.move_right()
+            else:
+                self.paddle_left_bottom.stop_x()
+        else:
+            # Standard 1P/2P controls
+            # Player 1 controls (left paddle)
+            if keys[pygame.K_w]:
+                self.paddle_left.move_up()
+            elif keys[pygame.K_s]:
+                self.paddle_left.move_down()
+            else:
+                self.paddle_left.stop()
+
+            # Player 2 controls (right paddle) - only in 2P mode
+            if self.mode == GameMode.TWO_PLAYER:
+                if keys[pygame.K_UP]:
+                    self.paddle_right.move_up()
+                elif keys[pygame.K_DOWN]:
+                    self.paddle_right.move_down()
+                else:
+                    self.paddle_right.stop()
 
     def update(self) -> None:
         """Update game state."""
         if self.state != GameState.PLAYING:
             return
 
-        # Update paddles
-        self.paddle_left.update()
-        self.paddle_right.update()
+        if self.mode == GameMode.DOUBLES:
+            # Update all 4 paddles
+            self.paddle_left_top.update()
+            self.paddle_left_bottom.update()
+            self.paddle_right_top.update()
+            self.paddle_right_bottom.update()
 
-        # Update AI in 1P mode
-        if self.mode == GameMode.ONE_PLAYER:
+            # Update both AI players
             self.ai.update(self.ball)
+            self.ai_bottom.update(self.ball)
 
-        # Update ball
-        self.ball.update()
+            # Update ball
+            self.ball.update()
 
-        # Check paddle collisions
-        self.ball.check_paddle_collision(self.paddle_left)
-        self.ball.check_paddle_collision(self.paddle_right)
+            # Check paddle collisions with all 4 paddles
+            self.ball.check_paddle_collision(self.paddle_left_top)
+            self.ball.check_paddle_collision(self.paddle_left_bottom)
+            self.ball.check_paddle_collision(self.paddle_right_top)
+            self.ball.check_paddle_collision(self.paddle_right_bottom)
+        else:
+            # Standard 1P/2P mode
+            # Update paddles
+            self.paddle_left.update()
+            self.paddle_right.update()
 
-        # Check scoring
+            # Update AI in 1P mode
+            if self.mode == GameMode.ONE_PLAYER:
+                self.ai.update(self.ball)
+
+            # Update ball
+            self.ball.update()
+
+            # Check paddle collisions
+            self.ball.check_paddle_collision(self.paddle_left)
+            self.ball.check_paddle_collision(self.paddle_right)
+
+        # Check scoring (same for all modes)
         if self.ball.is_out_left():
             self._score_right()
         elif self.ball.is_out_right():
@@ -154,6 +304,12 @@ class Game:
             self.state = GameState.GAME_OVER
         else:
             self._reset_positions()
+            # Randomize AI strategies in doubles mode
+            if self.mode == GameMode.DOUBLES:
+                self.ai.randomize_strategy()
+                self.ai_bottom.randomize_strategy()
+            elif self.mode == GameMode.ONE_PLAYER:
+                self.ai.randomize_strategy()
 
     def _score_right(self) -> None:
         """Handle right player scoring."""
@@ -162,6 +318,12 @@ class Game:
             self.state = GameState.GAME_OVER
         else:
             self._reset_positions()
+            # Randomize AI strategies in doubles mode
+            if self.mode == GameMode.DOUBLES:
+                self.ai.randomize_strategy()
+                self.ai_bottom.randomize_strategy()
+            elif self.mode == GameMode.ONE_PLAYER:
+                self.ai.randomize_strategy()
 
     def draw(self) -> pygame.Surface:
         """Draw the game.
@@ -210,8 +372,15 @@ class Game:
             pygame.draw.rect(self.screen, GRAY, (WINDOW_WIDTH // 2 - 2, y, 4, 10))
 
         # Draw paddles and ball
-        self.paddle_left.draw(self.screen)
-        self.paddle_right.draw(self.screen)
+        if self.mode == GameMode.DOUBLES:
+            self.paddle_left_top.draw(self.screen)
+            self.paddle_left_bottom.draw(self.screen)
+            self.paddle_right_top.draw(self.screen)
+            self.paddle_right_bottom.draw(self.screen)
+        else:
+            self.paddle_left.draw(self.screen)
+            self.paddle_right.draw(self.screen)
+
         self.ball.draw(self.screen)
 
         # Draw scores
@@ -260,11 +429,16 @@ class Game:
         self.screen.blit(restart_text, restart_rect)
 
     def toggle_mode(self) -> None:
-        """Toggle between 1P and 2P modes."""
+        """Toggle between 1P, 2P, and Doubles modes."""
         if self.mode == GameMode.ONE_PLAYER:
             self.mode = GameMode.TWO_PLAYER
+        elif self.mode == GameMode.TWO_PLAYER:
+            self.mode = GameMode.DOUBLES
         else:
             self.mode = GameMode.ONE_PLAYER
+
+        # Reinitialize game objects for the new mode
+        self._init_game_objects()
 
     def return_to_menu(self) -> None:
         """Return to the menu screen."""

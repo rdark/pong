@@ -62,7 +62,7 @@ def test_ai_moves_paddle_up_when_ball_above(ai, paddle, ball):
     paddle.y = 300
     ball.y = 100
     ai.update(ball)
-    assert paddle.velocity < 0
+    assert paddle.velocity_y < 0
 
 
 def test_ai_moves_paddle_down_when_ball_below(ai, paddle, ball):
@@ -70,7 +70,7 @@ def test_ai_moves_paddle_down_when_ball_below(ai, paddle, ball):
     paddle.y = 100
     ball.y = 300
     ai.update(ball)
-    assert paddle.velocity > 0
+    assert paddle.velocity_y > 0
 
 
 def test_ai_stops_paddle_within_reaction_zone(ai, paddle, ball):
@@ -80,7 +80,7 @@ def test_ai_stops_paddle_within_reaction_zone(ai, paddle, ball):
     # Set ball within reaction zone (30 pixels)
     ball.y = 310  # 10 pixels from center, within 30 pixel zone
     ai.update(ball)
-    assert paddle.velocity == 0
+    assert paddle.velocity_y == 0
 
 
 def test_ai_tracks_ball_movement(ai, paddle, ball):
@@ -89,12 +89,12 @@ def test_ai_tracks_ball_movement(ai, paddle, ball):
     paddle.y = 300
     ball.y = 100
     ai.update(ball)
-    assert paddle.velocity < 0
+    assert paddle.velocity_y < 0
 
     # Ball moves below paddle
     ball.y = 400
     ai.update(ball)
-    assert paddle.velocity > 0
+    assert paddle.velocity_y > 0
 
 
 def test_ai_uses_custom_speed(ai, paddle, ball):
@@ -102,7 +102,7 @@ def test_ai_uses_custom_speed(ai, paddle, ball):
     paddle.y = 100
     ball.y = 400
     ai.update(ball)
-    assert paddle.velocity == ai.speed
+    assert paddle.velocity_y == ai.speed
 
 
 def test_ai_easy_has_larger_reaction_zone(paddle, ball):
@@ -142,7 +142,7 @@ def test_ai_reaction_zone_boundary_upper(ai, paddle, ball):
     paddle.y = 250
     ball.y = paddle.center_y - ai.reaction_zone + 1
     ai.update(ball)
-    assert paddle.velocity == 0
+    assert paddle.velocity_y == 0
 
 
 def test_ai_reaction_zone_boundary_lower(ai, paddle, ball):
@@ -150,7 +150,7 @@ def test_ai_reaction_zone_boundary_lower(ai, paddle, ball):
     paddle.y = 250
     ball.y = paddle.center_y + ai.reaction_zone - 1
     ai.update(ball)
-    assert paddle.velocity == 0
+    assert paddle.velocity_y == 0
 
 
 def test_ai_outside_reaction_zone_upper(ai, paddle, ball):
@@ -158,7 +158,7 @@ def test_ai_outside_reaction_zone_upper(ai, paddle, ball):
     paddle.y = 250
     ball.y = paddle.center_y - ai.reaction_zone - 1
     ai.update(ball)
-    assert paddle.velocity < 0
+    assert paddle.velocity_y < 0
 
 
 def test_ai_outside_reaction_zone_lower(ai, paddle, ball):
@@ -166,4 +166,150 @@ def test_ai_outside_reaction_zone_lower(ai, paddle, ball):
     paddle.y = 250
     ball.y = paddle.center_y + ai.reaction_zone + 1
     ai.update(ball)
-    assert paddle.velocity > 0
+    assert paddle.velocity_y > 0
+
+
+def test_ai_doubles_mode_initialization(paddle):
+    """Test that AI can be initialized in doubles mode."""
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    assert ai.doubles_mode is True
+
+
+def test_ai_doubles_mode_moves_y_axis(paddle, ball):
+    """Test that AI in doubles mode moves on Y axis."""
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    paddle.y = 100
+    ball.y = 400
+    ball.x = 400
+    ai.update(ball)
+    assert paddle.velocity_y > 0
+
+
+def test_ai_doubles_mode_moves_x_axis(paddle, ball):
+    """Test that AI in doubles mode moves on X axis."""
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    paddle.x = 100
+    ball.x = 400
+    ball.y = paddle.center_y  # Within Y reaction zone
+    ai.update(ball)
+    assert paddle.velocity_x > 0
+
+
+def test_ai_doubles_mode_stops_y_within_zone(paddle, ball):
+    """Test that AI in doubles mode stops Y when within zone."""
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    paddle.y = 250
+    ball.y = paddle.center_y + 10  # Within reaction zone
+    ball.x = 400
+    ai.update(ball)
+    assert paddle.velocity_y == 0
+
+
+def test_ai_doubles_mode_stops_x_within_zone(paddle, ball):
+    """Test that AI in doubles mode stops X when at target position."""
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    # Position paddle at the balanced strategy target (3/4 of window width for right side)
+    # Assuming WINDOW_WIDTH = 800, target is 600
+    paddle.x = 595  # Close to target of 600
+    ball.x = 400
+    ball.y = 400
+    ai.update(ball)
+    # Should stop X movement when within reaction zone of target
+    assert paddle.velocity_x == 0
+
+
+def test_ai_doubles_mode_2d_tracking(paddle, ball):
+    """Test that AI in doubles mode tracks ball in 2D."""
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    paddle.x = 100
+    paddle.y = 100
+    ball.x = 400
+    ball.y = 400
+    ai.update(ball)
+    # Both velocities should be positive (moving right and down)
+    assert paddle.velocity_x > 0
+    assert paddle.velocity_y > 0
+
+
+def test_ai_randomize_strategy(paddle):
+    """Test that AI can randomize its strategy."""
+    from pong.ai import AIStrategy
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    initial_strategy = ai.strategy
+    # Randomize multiple times to ensure it changes
+    strategies = set()
+    for _ in range(20):
+        ai.randomize_strategy()
+        strategies.add(ai.strategy)
+    # Should have multiple strategies after 20 randomizations
+    assert len(strategies) > 1
+
+
+def test_ai_defensive_strategy_positioning(paddle, ball):
+    """Test that defensive strategy keeps AI back."""
+    from pong.ai import AIStrategy
+    from pong.constants import WINDOW_WIDTH, DOUBLES_PADDLE_OFFSET_X, PADDLE_WIDTH
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    ai.strategy = AIStrategy.DEFENSIVE
+    paddle.x = 500  # Right side, forward position
+    ball.x = 400
+    ball.y = 300
+    ai.update(ball)
+    # Should move toward back of court (higher X)
+    # Target is WINDOW_WIDTH - DOUBLES_PADDLE_OFFSET_X - PADDLE_WIDTH = 800 - 60 - 10 = 730
+    assert paddle.velocity_x > 0  # Moving right (back)
+
+
+def test_ai_aggressive_strategy_positioning(paddle, ball):
+    """Test that aggressive strategy moves AI forward."""
+    from pong.ai import AIStrategy
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    ai.strategy = AIStrategy.AGGRESSIVE
+    paddle.x = 700  # Right side, back position
+    ball.x = 400
+    ball.y = 300
+    ai.update(ball)
+    # Should move toward net (lower X)
+    assert paddle.velocity_x < 0  # Moving left (forward)
+
+
+def test_ai_balanced_strategy_positioning(paddle, ball):
+    """Test that balanced strategy keeps AI in middle."""
+    from pong.ai import AIStrategy
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    ai.strategy = AIStrategy.BALANCED
+    # Position paddle far from balanced position (600 for right side)
+    paddle.x = 450  # Right side, too far forward
+    ball.x = 400
+    ball.y = 300
+    ai.update(ball)
+    # Should move toward middle of right half (600)
+    assert paddle.velocity_x > 0  # Moving right toward center
+
+
+def test_ai_ball_reactive_strategy_forward(paddle, ball):
+    """Test that ball-reactive strategy moves forward when ball approaches."""
+    from pong.ai import AIStrategy
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    ai.strategy = AIStrategy.BALL_REACTIVE
+    paddle.x = 700  # Right side, back position
+    ball.x = 600
+    ball.vx = -3  # Ball moving left (toward AI)
+    ball.y = 300
+    ai.update(ball)
+    # Should move forward since ball is approaching
+    assert paddle.velocity_x < 0  # Moving left (forward)
+
+
+def test_ai_ball_reactive_strategy_back(paddle, ball):
+    """Test that ball-reactive strategy stays back when ball moves away."""
+    from pong.ai import AIStrategy
+    ai = AIPlayer(paddle, difficulty="medium", doubles_mode=True)
+    ai.strategy = AIStrategy.BALL_REACTIVE
+    paddle.x = 500  # Right side, forward position
+    ball.x = 600
+    ball.vx = 3  # Ball moving right (away from AI)
+    ball.y = 300
+    ai.update(ball)
+    # Should move back since ball is moving away
+    assert paddle.velocity_x > 0  # Moving right (back)
