@@ -14,7 +14,6 @@ A classic Pong game implementation in Python using pygame-ce (pygame Community E
 - **2D Movement in Doubles**: All paddles can move horizontally and vertically within their half of the court
 - **Smooth Physics**: Ball speed increases with each paddle hit, with angle-based reflections
 - **Score Tracking**: First to 10 points wins
-- **Clean UI**: Minimalist design with clear score display and menus
 
 ## Installation
 
@@ -125,23 +124,6 @@ You can modify game settings in `src/pong/constants.py`:
 - `DOUBLES_PADDLE_SPACING_Y`: Vertical spacing between teammates
 
 ## Architecture
-
-### Component Design
-
-- **Paddle**: Handles 2D paddle movement (X and Y axes), boundary constraints, and rendering
-  - Supports configurable X-axis boundaries for doubles mode (half-court restriction)
-  - Independent X and Y velocity control
-- **Ball**: Manages ball physics, collision detection with multiple paddles, and velocity
-- **AIPlayer**: Controls AI paddle with configurable difficulty
-  - Standard modes: Y-axis movement only
-  - Doubles mode: Full 2D movement (X and Y axes) with dynamic positioning strategies
-  - Four positioning strategies: Defensive (stay back), Balanced (middle), Aggressive (forward), Ball-reactive (adaptive)
-  - Strategies randomly change after each point scored
-  - In doubles mode, 2 AI instances coordinate using zone-based defense to prevent overlap
-- **Game**: Orchestrates game state, score tracking, and rendering
-  - Manages 2 or 4 paddles depending on mode
-  - Handles mode switching (1P → 2P → Doubles)
-- **main**: Entry point with pygame event loop
 
 ### Game Modes
 
