@@ -18,8 +18,6 @@ A classic Pong game implementation in Python using pygame-ce (pygame Community E
 
 ## Installation
 
-### Option 1: Using uv (Recommended)
-
 This project uses [uv](https://github.com/astral-sh/uv) for Python package management.
 
 ```bash
@@ -33,29 +31,11 @@ cd pong
 uv sync
 ```
 
-### Option 2: Using pip with requirements.txt
-
-```bash
-# Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-uv pip install -r requirements.txt
-
-# For development (includes testing tools)
-uv pip install -r requirements-dev.txt
-```
-
 ## Running the Game
 
 ```bash
 # Run with uv
 uv run pong
-
-# Or activate the virtual environment and run directly
-source .venv/bin/activate
-python -m pong.main
 ```
 
 ## Controls
@@ -82,10 +62,10 @@ python -m pong.main
   - D: Move right
 
 - **Player 2** (Left Bottom Paddle):
-  - I: Move up
-  - K: Move down
-  - J: Move left
-  - L: Move right
+  - UP ARROW: Move up
+  - DOWN ARROW: Move down
+  - LEFT ARROW: Move left
+  - RIGHT ARROW: Move right
 
 - **AI Team** (Right side): 2 AI opponents control the right paddles
 

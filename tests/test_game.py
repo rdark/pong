@@ -393,7 +393,7 @@ def test_game_doubles_mode_controls_player2(game):
     """Test player 2 controls in doubles mode."""
     game.mode = GameMode.DOUBLES
     game.start_game()
-    keys_dict = {pygame.K_k: True, pygame.K_j: True}
+    keys_dict = {pygame.K_DOWN: True, pygame.K_LEFT: True}
 
     class KeyWrapper:
         def __getitem__(self, key):

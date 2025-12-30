@@ -217,17 +217,17 @@ class Game:
 
             # Player 2 (left bottom): IJKL
             # Y-axis
-            if keys[pygame.K_i]:
+            if keys[pygame.K_UP]:
                 self.paddle_left_bottom.move_up()
-            elif keys[pygame.K_k]:
+            elif keys[pygame.K_DOWN]:
                 self.paddle_left_bottom.move_down()
             else:
                 self.paddle_left_bottom.stop_y()
 
             # X-axis
-            if keys[pygame.K_j]:
+            if keys[pygame.K_LEFT]:
                 self.paddle_left_bottom.move_left()
-            elif keys[pygame.K_l]:
+            elif keys[pygame.K_RIGHT]:
                 self.paddle_left_bottom.move_right()
             else:
                 self.paddle_left_bottom.stop_x()
